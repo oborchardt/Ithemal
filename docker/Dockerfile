@@ -1,4 +1,5 @@
-FROM debian:stretch
+# to omit the mysql installation
+FROM mysql:debian
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         build-essential             \
@@ -13,33 +14,30 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
         nasm                        \
         pv                          \
         python-dev                  \
-        qt5-default                 \
+        # qt5-default                 \
+        # install all the packages that come with qt5-default manually since there is not qt5-default for bullseye
+        qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools \
         sqlite3                     \
         sudo                        \
         tmux                        \
         unzip                       \
         vim                         \
         wget                        \
-        zip
+        zip                         
 
-# install mysql
-RUN wget -O /tmp/RPM-GPG-KEY-mysql https://repo.mysql.com/RPM-GPG-KEY-mysql && \
-        apt-key add /tmp/RPM-GPG-KEY-mysql && \
-        /bin/echo -e "deb http://repo.mysql.com/apt/debian/ stretch mysql-5.7\ndeb-src http://repo.mysql.com/apt/debian/ stretch mysql-5.7" > /etc/apt/sources.list.d/mysql.list && \
-        apt-get update && \
-        DEBIAN_FRONTEND=noninteractive apt-get install -y mysql-server
 
 COPY docker_my.cnf /etc/my.cnf
 
-RUN wget --quiet -O /tmp/install_conda.sh https://repo.continuum.io/miniconda/Miniconda2-4.6.14-Linux-x86_64.sh && \
+# python3 version in debian-bullseye is 3.9
+RUN wget --quiet -O /tmp/install_conda.sh https://repo.anaconda.com/miniconda/Miniconda3-py39_23.3.1-0-Linux-x86_64.sh && \
         sh /tmp/install_conda.sh -b -p /opt/conda && \
         rm /tmp/install_conda.sh
 
 COPY env /tmp/docker_env
 RUN /opt/conda/bin/conda create --name ithemal --file /tmp/docker_env
 
-RUN curl -sL https://github.com/DynamoRIO/dynamorio/releases/download/release_7_0_0_rc1/DynamoRIO-Linux-7.0.0-RC1.tar.gz | tar xz -C /opt
-ENV DYNAMORIO_HOME "/opt/DynamoRIO-Linux-7.0.0-RC1"
+RUN curl -sL https://github.com/DynamoRIO/dynamorio/releases/download/release_9.0.1/DynamoRIO-Linux-9.0.1.tar.gz | tar xz -C /opt
+ENV DYNAMORIO_HOME "/opt/DynamoRIO-Linux-9.0.1"
 # tar will not give you `755 & ~umask` because tar is evil
 RUN chown -R root:root "${DYNAMORIO_HOME}" && \
         find "${DYNAMORIO_HOME}" -type d -exec chmod 755 {} \; && \
